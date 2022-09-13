@@ -61,8 +61,11 @@ services:
       interval: 1s
       timeout: 5s
       retries: 120
+    networks:
+      - es-net
 
   es01:
+    container_name: es01
     depends_on:
       setup:
         condition: service_healthy
@@ -91,6 +94,10 @@ services:
       - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
       - xpack.security.transport.ssl.verification_mode=certificate
       - xpack.license.self_generated.type=${LICENSE}
+      - network.host=0.0.0.0
+      - reindex.remote.whitelist=localhost:9204
+      - reindex.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - reindex.ssl.verification_mode=none
     mem_limit: ${MEM_LIMIT}
     ulimits:
       memlock:
@@ -105,8 +112,11 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    networks:
+      - es-net
 
   es02:
+    container_name: es02
     depends_on:
       - es01
     image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
@@ -145,8 +155,11 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    networks:
+      - es-net
 
   es03:
+    container_name: es03
     depends_on:
       - es02
     image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
@@ -185,8 +198,12 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    networks:
+      - es-net
+
 
   kibana:
+    container_name: kibana01
     depends_on:
       es01:
         condition: service_healthy
@@ -216,6 +233,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    networks:
+      - es-net
 
 volumes:
   certs:
@@ -228,3 +247,7 @@ volumes:
     driver: local
   kibanadata:
     driver: local
+
+networks:
+  es-net:
+    driver: bridge
