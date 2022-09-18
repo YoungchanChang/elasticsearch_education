@@ -6,6 +6,7 @@ services:
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
     user: "0"
+    restart: always
     command: >
       bash -c '
         if [ x${ELASTIC_PASSWORD} == x ]; then
@@ -61,12 +62,16 @@ services:
       interval: 1s
       timeout: 5s
       retries: 120
+    networks:
+      - es-net
 
   es01:
+    container_name: es01
     depends_on:
       setup:
         condition: service_healthy
     image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    restart: always
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
       - esdata01:/usr/share/elasticsearch/data
@@ -92,11 +97,9 @@ services:
       - xpack.security.transport.ssl.verification_mode=certificate
       - xpack.license.self_generated.type=${LICENSE}
       - network.host=0.0.0.0
-      - reindex.remote.whitelist=192.168.1.194:9204
+      - reindex.remote.whitelist=localhost:9204
       - reindex.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
       - reindex.ssl.verification_mode=none
-
-
     mem_limit: ${MEM_LIMIT}
     ulimits:
       memlock:
@@ -111,14 +114,18 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    networks:
+      - es-net
 
   es02:
+    container_name: es02
     depends_on:
       - es01
     image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
       - esdata02:/usr/share/elasticsearch/data
+    restart: always
     environment:
       - node.name=es02
       - cluster.name=${CLUSTER_NAME}
@@ -151,11 +158,15 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    networks:
+      - es-net
 
   es03:
+    container_name: es03
     depends_on:
       - es02
     image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    restart: always
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
       - esdata03:/usr/share/elasticsearch/data
@@ -191,8 +202,12 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    networks:
+      - es-net
+
 
   kibana:
+    container_name: kibana01
     depends_on:
       es01:
         condition: service_healthy
@@ -201,6 +216,7 @@ services:
       es03:
         condition: service_healthy
     image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    restart: always
     volumes:
       - certs:/usr/share/kibana/config/certs
       - kibanadata:/usr/share/kibana/data
@@ -222,6 +238,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    networks:
+      - es-net
 
 volumes:
   certs:
@@ -234,3 +252,7 @@ volumes:
     driver: local
   kibanadata:
     driver: local
+
+networks:
+  es-net:
+    driver: bridge
