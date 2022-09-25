@@ -347,6 +347,12 @@ services:
       - ELASTICSEARCH_USERNAME=kibana_system
       - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
       - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
+      - xpack.security.encryptionKey= "1234567890123456789012345678901234567890"
+      - xpack.reporting.encryptionKey= 38747239hdjksdkjasdu291834zejhb
+      - xpack.encryptedSavedObjects.encryptionKey= "1234567890123456789012345678901234567890"
+      - xpack.encryptedSavedObjects.keyRotation.decryptionOnlyKeys= "1234567890123456789012345678901234567890"
+      - xpack.security.enabled= true
+      - xpack.monitoring.ui.container.elasticsearch.enabled= true
     mem_limit: ${MEM_LIMIT}
     healthcheck:
       test:
@@ -380,6 +386,12 @@ services:
       - ELASTICSEARCH_USERNAME=kibana_system
       - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
       - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
+      - xpack.monitoring.ui.container.elasticsearch.enabled= true
+      - xpack.security.encryptionKey= "1234567890123456789012345678901234567890"
+      - xpack.reporting.encryptionKey= 38747239hdjksdkjasdu291834zejhb
+      - xpack.encryptedSavedObjects.encryptionKey= "1234567890123456789012345678901234567890"
+      - xpack.encryptedSavedObjects.keyRotation.decryptionOnlyKeys= "1234567890123456789012345678901234567890"
+      - xpack.security.enabled= true
     mem_limit: ${MEM_LIMIT}
     healthcheck:
       test:
