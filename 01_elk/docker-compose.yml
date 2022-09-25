@@ -11,8 +11,8 @@ services:
         if [ x${ELASTIC_PASSWORD} == x ]; then
           echo "Set the ELASTIC_PASSWORD environment variable in the .env file";
           exit 1;
-        elif [ x${kibana_PASSWORD} == x ]; then
-          echo "Set the kibana_PASSWORD environment variable in the .env file";
+        elif [ x${KIBANA_PASSWORD} == x ]; then
+          echo "Set the KIBANA_PASSWORD environment variable in the .env file";
           exit 1;
         fi;
         if [ ! -f config/certs/ca.zip ]; then
@@ -42,6 +42,18 @@ services:
           "      - localhost\n"\
           "    ip:\n"\
           "      - 127.0.0.1\n"\
+          "  - name: node4\n"\
+          "    dns:\n"\
+          "      - node4\n"\
+          "      - localhost\n"\
+          "    ip:\n"\
+          "      - 127.0.0.1\n"\
+          "  - name: node5\n"\
+          "    dns:\n"\
+          "      - node5\n"\
+          "      - localhost\n"\
+          "    ip:\n"\
+          "      - 127.0.0.1\n"\
           > config/certs/instances.yml;
           bin/elasticsearch-certutil cert --silent --pem -out config/certs/certs.zip --in config/certs/instances.yml --ca-cert config/certs/ca/ca.crt --ca-key config/certs/ca/ca.key;
           unzip config/certs/certs.zip -d config/certs;
@@ -53,7 +65,9 @@ services:
         echo "Waiting for Elasticsearch availability";
         until curl -s --cacert config/certs/ca/ca.crt https://node1:9200 | grep -q "missing authentication credentials"; do sleep 30; done;
         echo "Setting kibana_system password";
-        until curl -s -X POST --cacert config/certs/ca/ca.crt -u elastic:${ELASTIC_PASSWORD} -H "Content-Type: application/json" https://node1:9200/_security/user/kibana_system/_password -d "{\"password\":\"${kibana_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
+        until curl -s -X POST --cacert config/certs/ca/ca.crt -u elastic:${ELASTIC_PASSWORD} -H "Content-Type: application/json" https://node1:9200/_security/user/kibana_system/_password -d "{\"password\":\"${KIBANA_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
+        echo "Setting kibana_system2 password";
+        until curl -s -X POST --cacert config/certs/ca/ca.crt -u elastic:${ELASTIC_PASSWORD} -H "Content-Type: application/json" https://node5:9204/_security/user/kibana_system/_password -d "{\"password\":\"${KIBANA_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
         echo "All done!";
       '
     healthcheck:
@@ -204,6 +218,112 @@ services:
     networks:
       - es-net
 
+  node4:
+    container_name: node4
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    networks:
+      - es-net
+    depends_on:
+      - node3
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+      - esdata04:/usr/share/elasticsearch/data
+      - './snapshots:/var/tmp/snapshots/'
+    environment:
+      - node.name=node4
+      - cluster.name=${CLUSTER_NAME}
+      - cluster.initial_master_nodes=node1,node2,node4
+      - discovery.seed_hosts=node1,node2
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=certs/node4/node4.key
+      - xpack.security.http.ssl.certificate=certs/node4/node4.crt
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.http.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=certs/node4/node4.key
+      - xpack.security.transport.ssl.certificate=certs/node4/node4.crt
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.license.self_generated.type=${LICENSE}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    healthcheck:
+      interval: 20s
+      retries: 10
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --cacert config/certs/ca/ca.crt https://localhost:9200 | grep -q 'missing authentication credentials'",
+        ]
+
+  node5:
+    depends_on:
+      setup:
+        condition: service_healthy
+    container_name: node5
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    networks:
+      - es-net
+    ports:
+      - 9304:9304
+      - 9204:9204
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+      - esdata05:/usr/share/elasticsearch/data
+      - './snapshots:/var/tmp/snapshots/'
+    environment:
+      - node.name=node5
+      - cluster.name=${CLUSTER_NAME2}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - discovery.type=single-node
+      - http.port= 9204
+      - transport.port= 9304
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=certs/node5/node5.key
+      - xpack.security.http.ssl.certificate=certs/node5/node5.crt
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.http.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=certs/node5/node5.key
+      - xpack.security.transport.ssl.certificate=certs/node5/node5.crt
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.license.self_generated.type=${LICENSE}
+      - network.host=0.0.0.0
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    healthcheck:
+      interval: 20s
+      retries: 10
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --cacert config/certs/ca/ca.crt https://localhost:9200 | grep -q 'missing authentication credentials'",
+        ]
+
+
 
   kibana1:
     container_name: kibana1
@@ -214,18 +334,18 @@ services:
         condition: service_healthy
       node3:
         condition: service_healthy
-    image: docker.elastic.co/kibana1/kibana1:${STACK_VERSION}
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
     restart: always
     volumes:
-      - certs:/usr/share/kibana1/config/certs
-      - kibana1data:/usr/share/kibana1/data
+      - certs:/usr/share/kibana/config/certs
+      - kibana1data:/usr/share/kibana/data
     ports:
-      - ${kibana1_PORT}:5601
+      - ${KIBANA_PORT}:5601
     environment:
       - SERVERNAME=kibana1
       - ELASTICSEARCH_HOSTS=https://node1:9200
       - ELASTICSEARCH_USERNAME=kibana_system
-      - ELASTICSEARCH_PASSWORD=${kibana_PASSWORD}
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
       - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
     mem_limit: ${MEM_LIMIT}
     healthcheck:
@@ -240,6 +360,37 @@ services:
     networks:
       - es-net
 
+
+  kibana2:
+    container_name: kibana2
+    depends_on:
+      node5:
+        condition: service_healthy
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    restart: always
+    volumes:
+      - certs:/usr/share/kibana/config/certs
+      - kibana2data:/usr/share/kibana/data
+    ports:
+      - ${KIBANA_PORT2}:5601
+    environment:
+      - SERVERNAME=kibana2
+      - ELASTICSEARCH_HOSTS=https://node5:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
+    mem_limit: ${MEM_LIMIT}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s -I http://localhost:5601 | grep -q 'HTTP/1.1 302 Found'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+    networks:
+      - es-net
 
   metricbeat:
     container_name: metricbeat01
@@ -273,7 +424,13 @@ volumes:
     driver: local
   esdata03:
     driver: local
+  esdata04:
+    driver: local
+  esdata05:
+    driver: local
   kibana1data:
+    driver: local
+  kibana2data:
     driver: local
   metricbeat01:
     driver: local
