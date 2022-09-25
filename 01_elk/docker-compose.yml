@@ -6,7 +6,6 @@ services:
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
     user: "0"
-    restart: always
     command: >
       bash -c '
         if [ x${ELASTIC_PASSWORD} == x ]; then
@@ -241,6 +240,26 @@ services:
     networks:
       - es-net
 
+
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:${STACK_VERSION}
+    restart: always
+    # https://github.com/docker/swarmkit/issues/1951
+    user: root
+    networks:
+      - es-net
+    volumes:
+      - ./metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml
+      - certs:/usr/share/metricbeat/certs
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - ELASTICSEARCH_HOSTS=https://es01:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=es1234
+
+    deploy:
+      mode: global
+
 volumes:
   certs:
     driver: local
@@ -252,7 +271,11 @@ volumes:
     driver: local
   kibanadata:
     driver: local
+  metricbeat01:
+    driver: local
 
 networks:
   es-net:
     driver: bridge
+
+

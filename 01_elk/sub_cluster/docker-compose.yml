@@ -49,8 +49,11 @@ services:
       interval: 1s
       timeout: 5s
       retries: 120
+    networks:
+      - es-net
 
   es04:
+    container_name: es04
     depends_on:
       setup2:
         condition: service_healthy
@@ -78,6 +81,8 @@ services:
       - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
       - xpack.security.transport.ssl.verification_mode=certificate
       - xpack.license.self_generated.type=${LICENSE}
+      - network.host=0.0.0.0
+
     mem_limit: ${MEM_LIMIT}
     ulimits:
       memlock:
@@ -92,9 +97,11 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
-
+    networks:
+      - es-net
 
   kibana2:
+    container_name: kibana2
     depends_on:
       es04:
         condition: service_healthy
@@ -120,6 +127,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    networks:
+      - es-net
 
 volumes:
   certs2:
@@ -128,3 +137,7 @@ volumes:
     driver: local
   kibanadata2:
     driver: local
+
+networks:
+  es-net:
+    driver: bridge

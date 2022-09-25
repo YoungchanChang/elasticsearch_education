@@ -10,3 +10,5 @@ $ docker cp 01_elk_es01_1:/usr/share/elasticsearch/config/certs/ca/ca.crt .
 
 # 로그스태시 명령어
 user@users-MacBook-Air logstash-8.3.2 % bin/logstash -f config/logstash-tmdb.conf
+
+# https://quoeamaster.medium.com/deploying-metricbeat-side-by-side-with-elasticsearch-in-docker-42c769d95be
