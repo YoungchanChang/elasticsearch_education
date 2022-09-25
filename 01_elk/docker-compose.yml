@@ -320,7 +320,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl -s --cacert config/certs/ca/ca.crt https://localhost:9200 | grep -q 'missing authentication credentials'",
+          "curl -s --cacert config/certs/ca/ca.crt https://localhost:9204 | grep -q 'missing authentication credentials'",
         ]
 
 
@@ -375,7 +375,8 @@ services:
       - ${KIBANA_PORT2}:5601
     environment:
       - SERVERNAME=kibana2
-      - ELASTICSEARCH_HOSTS=https://node5:9200
+      # - server.port=5602
+      - ELASTICSEARCH_HOSTS=https://node5:9204
       - ELASTICSEARCH_USERNAME=kibana_system
       - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
       - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
@@ -384,7 +385,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl -s -I http://localhost:5601 | grep -q 'HTTP/1.1 302 Found'",
+          "curl -s -I http://localhost:5602 | grep -q 'HTTP/1.1 302 Found'",
         ]
       interval: 10s
       timeout: 10s
