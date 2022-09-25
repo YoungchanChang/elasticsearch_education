@@ -11,8 +11,8 @@ services:
         if [ x${ELASTIC_PASSWORD} == x ]; then
           echo "Set the ELASTIC_PASSWORD environment variable in the .env file";
           exit 1;
-        elif [ x${KIBANA_PASSWORD} == x ]; then
-          echo "Set the KIBANA_PASSWORD environment variable in the .env file";
+        elif [ x${kibana_PASSWORD} == x ]; then
+          echo "Set the kibana_PASSWORD environment variable in the .env file";
           exit 1;
         fi;
         if [ ! -f config/certs/ca.zip ]; then
@@ -24,21 +24,21 @@ services:
           echo "Creating certs";
           echo -ne \
           "instances:\n"\
-          "  - name: es01\n"\
+          "  - name: node1\n"\
           "    dns:\n"\
-          "      - es01\n"\
+          "      - node1\n"\
           "      - localhost\n"\
           "    ip:\n"\
           "      - 127.0.0.1\n"\
-          "  - name: es02\n"\
+          "  - name: node2\n"\
           "    dns:\n"\
-          "      - es02\n"\
+          "      - node2\n"\
           "      - localhost\n"\
           "    ip:\n"\
           "      - 127.0.0.1\n"\
-          "  - name: es03\n"\
+          "  - name: node3\n"\
           "    dns:\n"\
-          "      - es03\n"\
+          "      - node3\n"\
           "      - localhost\n"\
           "    ip:\n"\
           "      - 127.0.0.1\n"\
@@ -51,21 +51,21 @@ services:
         find . -type d -exec chmod 750 \{\} \;;
         find . -type f -exec chmod 640 \{\} \;;
         echo "Waiting for Elasticsearch availability";
-        until curl -s --cacert config/certs/ca/ca.crt https://es01:9200 | grep -q "missing authentication credentials"; do sleep 30; done;
+        until curl -s --cacert config/certs/ca/ca.crt https://node1:9200 | grep -q "missing authentication credentials"; do sleep 30; done;
         echo "Setting kibana_system password";
-        until curl -s -X POST --cacert config/certs/ca/ca.crt -u elastic:${ELASTIC_PASSWORD} -H "Content-Type: application/json" https://es01:9200/_security/user/kibana_system/_password -d "{\"password\":\"${KIBANA_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
+        until curl -s -X POST --cacert config/certs/ca/ca.crt -u elastic:${ELASTIC_PASSWORD} -H "Content-Type: application/json" https://node1:9200/_security/user/kibana_system/_password -d "{\"password\":\"${kibana_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
         echo "All done!";
       '
     healthcheck:
-      test: ["CMD-SHELL", "[ -f config/certs/es01/es01.crt ]"]
+      test: ["CMD-SHELL", "[ -f config/certs/node1/node1.crt ]"]
       interval: 1s
       timeout: 5s
       retries: 120
     networks:
       - es-net
 
-  es01:
-    container_name: es01
+  node1:
+    container_name: node1
     depends_on:
       setup:
         condition: service_healthy
@@ -77,21 +77,21 @@ services:
     ports:
       - ${ES_PORT}:9200
     environment:
-      - node.name=es01
+      - node.name=node1
       - cluster.name=${CLUSTER_NAME}
-      - cluster.initial_master_nodes=es01,es02,es03
-      - discovery.seed_hosts=es02,es03
+      - cluster.initial_master_nodes=node1,node2,node3
+      - discovery.seed_hosts=node2,node3
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - bootstrap.memory_lock=true
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=true
-      - xpack.security.http.ssl.key=certs/es01/es01.key
-      - xpack.security.http.ssl.certificate=certs/es01/es01.crt
+      - xpack.security.http.ssl.key=certs/node1/node1.key
+      - xpack.security.http.ssl.certificate=certs/node1/node1.crt
       - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
       - xpack.security.http.ssl.verification_mode=certificate
       - xpack.security.transport.ssl.enabled=true
-      - xpack.security.transport.ssl.key=certs/es01/es01.key
-      - xpack.security.transport.ssl.certificate=certs/es01/es01.crt
+      - xpack.security.transport.ssl.key=certs/node1/node1.key
+      - xpack.security.transport.ssl.certificate=certs/node1/node1.crt
       - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
       - xpack.security.transport.ssl.verification_mode=certificate
       - xpack.license.self_generated.type=${LICENSE}
@@ -116,30 +116,30 @@ services:
     networks:
       - es-net
 
-  es02:
-    container_name: es02
+  node2:
+    container_name: node2
     depends_on:
-      - es01
+      - node1
     image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
       - esdata02:/usr/share/elasticsearch/data
     restart: always
     environment:
-      - node.name=es02
+      - node.name=node2
       - cluster.name=${CLUSTER_NAME}
-      - cluster.initial_master_nodes=es01,es02,es03
-      - discovery.seed_hosts=es01,es03
+      - cluster.initial_master_nodes=node1,node2,node3
+      - discovery.seed_hosts=node1,node3
       - bootstrap.memory_lock=true
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=true
-      - xpack.security.http.ssl.key=certs/es02/es02.key
-      - xpack.security.http.ssl.certificate=certs/es02/es02.crt
+      - xpack.security.http.ssl.key=certs/node2/node2.key
+      - xpack.security.http.ssl.certificate=certs/node2/node2.crt
       - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
       - xpack.security.http.ssl.verification_mode=certificate
       - xpack.security.transport.ssl.enabled=true
-      - xpack.security.transport.ssl.key=certs/es02/es02.key
-      - xpack.security.transport.ssl.certificate=certs/es02/es02.crt
+      - xpack.security.transport.ssl.key=certs/node2/node2.key
+      - xpack.security.transport.ssl.certificate=certs/node2/node2.crt
       - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
       - xpack.security.transport.ssl.verification_mode=certificate
       - xpack.license.self_generated.type=${LICENSE}
@@ -160,30 +160,30 @@ services:
     networks:
       - es-net
 
-  es03:
-    container_name: es03
+  node3:
+    container_name: node3
     depends_on:
-      - es02
+      - node2
     image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
     restart: always
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
       - esdata03:/usr/share/elasticsearch/data
     environment:
-      - node.name=es03
+      - node.name=node3
       - cluster.name=${CLUSTER_NAME}
-      - cluster.initial_master_nodes=es01,es02,es03
-      - discovery.seed_hosts=es01,es02
+      - cluster.initial_master_nodes=node1,node2,node3
+      - discovery.seed_hosts=node1,node2
       - bootstrap.memory_lock=true
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=true
-      - xpack.security.http.ssl.key=certs/es03/es03.key
-      - xpack.security.http.ssl.certificate=certs/es03/es03.crt
+      - xpack.security.http.ssl.key=certs/node3/node3.key
+      - xpack.security.http.ssl.certificate=certs/node3/node3.crt
       - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
       - xpack.security.http.ssl.verification_mode=certificate
       - xpack.security.transport.ssl.enabled=true
-      - xpack.security.transport.ssl.key=certs/es03/es03.key
-      - xpack.security.transport.ssl.certificate=certs/es03/es03.crt
+      - xpack.security.transport.ssl.key=certs/node3/node3.key
+      - xpack.security.transport.ssl.certificate=certs/node3/node3.crt
       - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
       - xpack.security.transport.ssl.verification_mode=certificate
       - xpack.license.self_generated.type=${LICENSE}
@@ -205,27 +205,27 @@ services:
       - es-net
 
 
-  kibana:
-    container_name: kibana01
+  kibana1:
+    container_name: kibana1
     depends_on:
-      es01:
+      node1:
         condition: service_healthy
-      es02:
+      node2:
         condition: service_healthy
-      es03:
+      node3:
         condition: service_healthy
-    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    image: docker.elastic.co/kibana1/kibana1:${STACK_VERSION}
     restart: always
     volumes:
-      - certs:/usr/share/kibana/config/certs
-      - kibanadata:/usr/share/kibana/data
+      - certs:/usr/share/kibana1/config/certs
+      - kibana1data:/usr/share/kibana1/data
     ports:
-      - ${KIBANA_PORT}:5601
+      - ${kibana1_PORT}:5601
     environment:
-      - SERVERNAME=kibana
-      - ELASTICSEARCH_HOSTS=https://es01:9200
+      - SERVERNAME=kibana1
+      - ELASTICSEARCH_HOSTS=https://node1:9200
       - ELASTICSEARCH_USERNAME=kibana_system
-      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+      - ELASTICSEARCH_PASSWORD=${kibana_PASSWORD}
       - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
     mem_limit: ${MEM_LIMIT}
     healthcheck:
@@ -244,7 +244,7 @@ services:
   metricbeat:
     container_name: metricbeat01
     depends_on:
-      kibana:
+      kibana1:
         condition: service_healthy
     image: docker.elastic.co/beats/metricbeat:${STACK_VERSION}
     restart: always
@@ -257,7 +257,7 @@ services:
       - certs:/usr/share/metricbeat/certs
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - ELASTICSEARCH_HOSTS=https://es01:9200
+      - ELASTICSEARCH_HOSTS=https://node1:9200
       - ELASTICSEARCH_USERNAME=elastic
       - ELASTICSEARCH_PASSWORD=es1234
 
@@ -273,7 +273,7 @@ volumes:
     driver: local
   esdata03:
     driver: local
-  kibanadata:
+  kibana1data:
     driver: local
   metricbeat01:
     driver: local
