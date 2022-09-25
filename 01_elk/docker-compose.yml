@@ -242,6 +242,10 @@ services:
 
 
   metricbeat:
+    container_name: metricbeat01
+    depends_on:
+      kibana:
+        condition: service_healthy
     image: docker.elastic.co/beats/metricbeat:${STACK_VERSION}
     restart: always
     # https://github.com/docker/swarmkit/issues/1951
