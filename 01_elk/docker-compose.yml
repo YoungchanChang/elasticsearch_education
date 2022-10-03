@@ -88,6 +88,7 @@ services:
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
       - esdata01:/usr/share/elasticsearch/data
+      - snapshots:/var/tmp/snapshots/
     ports:
       - ${ES_PORT}:9200
     environment:
@@ -96,6 +97,7 @@ services:
       - cluster.initial_master_nodes=node1,node2,node3
       - discovery.seed_hosts=node2,node3
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - path.repo=["/var/tmp/snapshots"]
       - bootstrap.memory_lock=true
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=true
@@ -138,12 +140,14 @@ services:
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
       - esdata02:/usr/share/elasticsearch/data
+      - snapshots:/var/tmp/snapshots/
     restart: always
     environment:
       - node.name=node2
       - cluster.name=${CLUSTER_NAME}
       - cluster.initial_master_nodes=node1,node2,node3
       - discovery.seed_hosts=node1,node3
+      - path.repo=["/var/tmp/snapshots"]
       - bootstrap.memory_lock=true
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=true
@@ -183,11 +187,13 @@ services:
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
       - esdata03:/usr/share/elasticsearch/data
+      - snapshots:/var/tmp/snapshots/
     environment:
       - node.name=node3
       - cluster.name=${CLUSTER_NAME}
       - cluster.initial_master_nodes=node1,node2,node3
       - discovery.seed_hosts=node1,node2
+      - path.repo=["/var/tmp/snapshots"]
       - bootstrap.memory_lock=true
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=true
@@ -228,12 +234,13 @@ services:
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
       - esdata04:/usr/share/elasticsearch/data
-      - './snapshots:/var/tmp/snapshots/'
+      - snapshots:/var/tmp/snapshots/
     environment:
       - node.name=node4
       - cluster.name=${CLUSTER_NAME}
       - cluster.initial_master_nodes=node1,node2,node4
       - discovery.seed_hosts=node1,node2
+      - path.repo=["/var/tmp/snapshots"]
       - bootstrap.memory_lock=true
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=true
@@ -281,7 +288,6 @@ services:
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
       - esdata05:/usr/share/elasticsearch/data
-      - './snapshots:/var/tmp/snapshots/'
     environment:
       - node.name=node5
       - cluster.name=${CLUSTER_NAME2}
@@ -447,6 +453,9 @@ volumes:
     driver: local
   metricbeat01:
     driver: local
+  snapshots:
+    driver: local
+
 
 networks:
   es-net:
